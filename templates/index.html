@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Semantic Net Assignment</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- External library for network visualization -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+
+<div id="controlPanel">
+    <h3>Semantic Net Controls</h3>
+
+    <fieldset>
+        <legend onclick="this.parentNode.querySelector('div').classList.toggle('hidden');" style="cursor:pointer;">Add Node</legend>
+        <div>
+            <input id="nodeAdd" placeholder="Name">
+            <input type="color" id="nodeColor" value="#808080">
+            <button onclick="addNode()">Add Node</button>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend onclick="this.parentNode.querySelector('div').classList.toggle('hidden');" style="cursor:pointer;">Add Relationship</legend>
+        <div>
+            <input id="relFromAdd" placeholder="From">
+            <input id="relTypeAdd" placeholder="Relation">
+            <input id="relToAdd" placeholder="To">
+            <button onclick="addRelation()">Add Relation</button>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend onclick="this.parentNode.querySelector('div').classList.toggle('hidden');" style="cursor:pointer;">Remove Node</legend>
+        <div>
+            <input id="nodeRemove" placeholder="Name">
+            <button onclick="removeNode()">Remove Node</button>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend onclick="this.parentNode.querySelector('div').classList.toggle('hidden');" style="cursor:pointer;">Remove Relationship</legend>
+        <div>
+            <input id="relFromRemove" placeholder="From">
+            <input id="relTypeRemove" placeholder="Relation">
+            <input id="relToRemove" placeholder="To">
+            <button onclick="removeRelation()">Remove Relation</button>
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend onclick="this.parentNode.querySelector('div').classList.toggle('hidden');" style="cursor:pointer;">Inference (Bonus)</legend>
+        <div>
+            <button onclick="inference()">Run Inference</button>
+        </div>
+    </fieldset>
+</div>
+
+<div id="network" style="width: 100%; height: 100vh;"></div>
+<script src="{{ url_for('static', filename='ui.js') }}"></script>
+<script>
+    initNetwork();
+</script>
+</body>
+</html>
