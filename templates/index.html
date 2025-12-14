@@ -13,10 +13,25 @@
     <h3>Semantic Net Controls</h3>
 
     <fieldset>
+        <legend onclick="this.parentNode.querySelector('div').classList.toggle('hidden');" style="cursor:pointer;">Examples & Export</legend>
+        <div>
+            <select id="exampleSelect" onchange="loadExample(this.value)" style="width: 100%; margin-bottom: 5px;">
+                <!-- Populated by JS -->
+            </select>
+            <button onclick="exportImage()">Export Image</button>
+            <div style="margin-top: 5px;">
+                <button onclick="importJSON()">Import JSON</button>
+                <button onclick="exportJSON()">Export JSON</button>
+            </div>
+        </div>
+    </fieldset>
+
+    <fieldset>
         <legend onclick="this.parentNode.querySelector('div').classList.toggle('hidden');" style="cursor:pointer;">Add Node</legend>
         <div>
             <input id="nodeAdd" placeholder="Name">
             <input type="color" id="nodeColor" value="#808080">
+            <div id="colorPalette" style="margin-top: 5px;"></div>
             <button onclick="addNode()">Add Node</button>
         </div>
     </fieldset>

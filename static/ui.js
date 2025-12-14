@@ -34,6 +34,19 @@ async function initNetwork() {
     nodes.clear();
     edges.clear();
 
+    // Load examples list
+    const resExamples = await fetch("/get_examples");
+    const examples = await resExamples.json();
+    const select = document.getElementById("exampleSelect");
+    if (select.options.length === 0) {
+        examples.forEach(ex => {
+            const opt = document.createElement("option");
+            opt.value = ex;
+            opt.innerText = ex;
+            select.appendChild(opt);
+        });
+    }
+
     const resNodes = await fetch("/get_nodes");
     const nodesData = await resNodes.json();
 
@@ -44,6 +57,69 @@ async function initNetwork() {
         nodes.add(n);
     });
     edgesData.edges.forEach(e => edges.add({ from: e[0], to: e[1], label: e[2], arrows: "to" }));
+
+    updateColorPalette(nodesData.nodes);
+}
+
+function updateColorPalette(nodesList) {
+    const palette = document.getElementById("colorPalette");
+    palette.innerHTML = "";
+    const colors = new Set(nodesList.map(n => n.color));
+    
+    colors.forEach(c => {
+        const swatch = document.createElement("div");
+        swatch.className = "color-swatch";
+        swatch.style.backgroundColor = c;
+        swatch.onclick = () => {
+            document.getElementById("nodeColor").value = c;
+        };
+        palette.appendChild(swatch);
+    });
+}
+
+async function loadExample(name) {
+    await api("/load_example", { name });
+    initNetwork();
+}
+
+function exportImage() {
+    const canvas = document.querySelector("#network canvas");
+    const link = document.createElement("a");
+    link.download = "semantic_net.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+}
+
+function exportJSON() {
+    const data = {
+        nodes: nodes.get(),
+        edges: edges.get()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.download = "semantic_net.json";
+    link.href = URL.createObjectURL(blob);
+    link.click();
+}
+
+function importJSON() {
+    const link = document.createElement("input");
+    link.type = "file";
+    link.accept = "application/json";
+    link.onchange = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const text = await file.text();
+        try {
+            const data = JSON.parse(text);
+            await api("/load_custom", data);
+            initNetwork();
+        } catch (e) {
+            alert("Invalid JSON file");
+        }
+    };
+    link.click();
 }
 
 // helper function for API calls
@@ -72,9 +148,12 @@ function addNode() {
     if (nodes.get(name))
         return alert("Node already exists");
 
-    api("/add_node", { name})
+    api("/add_node", { name, color })
     .then(res => {
-        if (res.success) nodes.add({ id: name, label: name, color });
+        if (res.success) {
+            nodes.add({ id: name, label: name, color });
+            updateColorPalette(nodes.get());
+        }
     });
 }
 

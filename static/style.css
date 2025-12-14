@@ -45,7 +45,28 @@ button {
 }
 
 button:hover { 
-    background-color: #FFA500; 
+    background-color: #ff6600; 
 }
 
 .hidden { display: none; }
+
+#network {
+    background-color: #ffffff;
+    background-image: radial-gradient(#e5e5e5 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+.color-swatch {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    margin: 2px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.color-swatch:hover {
+    border-color: #000;
+    transform: scale(1.1);
+}

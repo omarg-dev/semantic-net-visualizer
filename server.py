@@ -8,93 +8,163 @@ CORS(app)
 
 net = SemanticNet()
 
-# Setup semantic net
-nodes = [
-    "Character", "Hero", "Knight", "Wizard", "Merchant",
-    "Enemy", "Goblin", "Dragon",
-    "Item", "Sword", "Magic Staff", "Healing Potion", "Gold Coin", "Armor",
-    "Ability", "Fireball", "Slash",
-    "Location", "Forest", "Volcano"
-]
+# Define Examples Data
+EXAMPLES = {
+    "RPG World": {
+        "nodes": [
+            "Character", "Hero", "Knight", "Wizard", "Merchant",
+            "Enemy", "Goblin", "Dragon",
+            "Item", "Sword", "Magic Staff", "Healing Potion", "Gold Coin", "Armor",
+            "Ability", "Fireball", "Slash",
+            "Location", "Forest", "Volcano"
+        ],
+        "edges": [
+            ("Hero", "is-a", "Character"),
+            ("Knight", "is-a", "Hero"),
+            ("Wizard", "is-a", "Hero"),
+            ("Merchant", "is-a", "Character"),
+            ("Goblin", "is-a", "Enemy"),
+            ("Dragon", "is-a", "Enemy"),
+            ("Sword", "is-a", "Item"),
+            ("Magic Staff", "is-a", "Item"),
+            ("Healing Potion", "is-a", "Item"),
+            ("Gold Coin", "is-a", "Item"),
+            ("Armor", "is-a", "Item"),
+            ("Slash", "is-a", "Ability"),
+            ("Fireball", "is-a", "Ability"),
+            ("Forest", "is-a", "Location"),
+            ("Volcano", "is-a", "Location"),
 
-edges = [
-    ("Hero", "is-a", "Character"),
-    ("Knight", "is-a", "Hero"),
-    ("Wizard", "is-a", "Hero"),
-    ("Merchant", "is-a", "Character"),
-    ("Goblin", "is-a", "Enemy"),
-    ("Dragon", "is-a", "Enemy"),
-    ("Sword", "is-a", "Item"),
-    ("Magic Staff", "is-a", "Item"),
-    ("Healing Potion", "is-a", "Item"),
-    ("Gold Coin", "is-a", "Item"),
-    ("Armor", "is-a", "Item"),
-    ("Slash", "is-a", "Ability"),
-    ("Fireball", "is-a", "Ability"),
-    ("Forest", "is-a", "Location"),
-    ("Volcano", "is-a", "Location"),
+            ("Knight", "has-a", "Sword"),
+            ("Wizard", "has-a", "Magic Staff"),
 
-    ("Knight", "has-a", "Sword"),
-    ("Wizard", "has-a", "Magic Staff"),
+            ("Goblin", "located-in", "Forest"),
+            ("Dragon", "located-in", "Volcano"),
+            ("Merchant", "located-in", "Forest"),
 
-    ("Goblin", "located-in", "Forest"),
-    ("Dragon", "located-in", "Volcano"),
-    ("Merchant", "located-in", "Forest"),
+            ("Magic Staff", "can-use", "Fireball"),
+            ("Sword", "can-use", "Slash"),
+            ("Hero", "can-use", "Healing Potion"),
+            ("Character", "can-use", "Armor"),
 
-    ("Magic Staff", "can-use", "Fireball"),
-    ("Sword", "can-use", "Slash"),
-    ("Hero", "can-use", "Healing Potion"),
-    ("Character", "can-use", "Armor"),
+            ("Goblin", "drops", "Gold Coin"),
+            ("Dragon", "drops", "Armor")
+        ],
+        "colors": {
+            "Character": "lightblue",
+            "Merchant": "lightblue",
+            "Hero": "lightblue",
+            "Knight": "lightblue",
+            "Wizard": "lightblue",
 
-    ("Goblin", "drops", "Gold Coin"),
-    ("Dragon", "drops", "Armor")
-]
+            "Enemy": "red",
+            "Goblin": "red",
+            "Dragon": "red",
 
-# Color coding setup (only for initial nodes)
-NODE_COLORS = {
+            "Item": "orange",
+            "Sword": "orange",
+            "Magic Staff": "orange",
+            "Armor": "orange",
+            "Gold Coin": "orange",
+            "Healing Potion": "orange",
 
-    "Character": "lightblue",
-    "Merchant": "lightblue",
-    "Hero": "lightblue",
-    "Knight": "lightblue",
-    "Wizard": "lightblue",
+            "Ability": "purple",
+            "Slash": "purple",
+            "Fireball": "purple",
 
-    "Enemy": "red",
-    "Goblin": "red",
-    "Dragon": "red",
-
-    "Item": "orange",
-    "Sword": "orange",
-    "Magic Staff": "orange",
-    "Armor": "orange",
-    "Gold Coin": "orange",
-    "Healing Potion": "orange",
-
-    "Ability": "purple",
-    "Slash": "purple",
-    "Fireball": "purple",
-
-    "Location": "lightgreen",
-    "Forest": "lightgreen",
-    "Volcano": "lightgreen"
+            "Location": "lightgreen",
+            "Forest": "lightgreen",
+            "Volcano": "lightgreen"
+        }
+    },
+    "Animal Kingdom": {
+        "nodes": ["Animal", "Mammal", "Bird", "Dog", "Cat", "Eagle", "Penguin", "Wings", "Fur", "Milk"],
+        "edges": [
+            ("Mammal", "is-a", "Animal"),
+            ("Bird", "is-a", "Animal"),
+            ("Dog", "is-a", "Mammal"),
+            ("Cat", "is-a", "Mammal"),
+            ("Eagle", "is-a", "Bird"),
+            ("Penguin", "is-a", "Bird"),
+            ("Mammal", "has", "Fur"),
+            ("Mammal", "produces", "Milk"),
+            ("Bird", "has", "Wings"),
+            ("Eagle", "can", "Fly"),
+            ("Penguin", "cannot", "Fly")
+        ],
+        "colors": {
+            "Animal": "#D3D3D3",
+            "Mammal": "#FFD700",
+            "Bird": "#87CEEB",
+            "Dog": "#8B4513",
+            "Cat": "#000000",
+            "Eagle": "#DAA520",
+            "Penguin": "#2F4F4F",
+            "Wings": "#FFFFFF",
+            "Fur": "#A0522D",
+            "Milk": "#FFFAF0"
+        }
+    }
 }
 
-for n in nodes:
-    net.add_node(n)
-for s, r, t in edges:
-    net.add_relation(s, r, t)
+# Global State
+current_colors = {}
 
+def load_dataset(name):
+    global net, current_colors
+    data = EXAMPLES.get(name)
+    if not data:
+        return False
+    
+    net = SemanticNet()
+    current_colors = data["colors"].copy()
+    
+    for n in data["nodes"]:
+        net.add_node(n)
+    for s, r, t in data["edges"]:
+        net.add_relation(s, r, t)
+    return True
+
+# Initialize with default
+load_dataset("RPG World")
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
 # API endpoints for frontend real-time manipulation
+@app.route("/get_examples")
+def get_examples():
+    return jsonify(list(EXAMPLES.keys()))
+
+@app.route("/load_example", methods=["POST"])
+def load_example_route():
+    name = request.json.get("name")
+    if load_dataset(name):
+        return jsonify({"success": True})
+    return jsonify({"error": "Example not found"}), 404
+
+@app.route("/load_custom", methods=["POST"])
+def load_custom_route():
+    data = request.json
+    nodes = data.get("nodes", [])
+    edges = data.get("edges", [])
+
+    net = SemanticNet()
+    current_colors = data["colors"].copy()
+
+    for n in nodes:
+        net.add_node(n.get("id"))
+        current_colors[n.get("id")] = n.get("color")
+    for s, r, t in edges:
+        net.add_relation(s.get("from"), r.get("label"), t.get("to"))
+    return jsonify({"success": True})
+
 @app.route("/get_nodes")
 def get_nodes():
     node_objs = []
     for n in net.graph.nodes:
-        color = NODE_COLORS.get(n, "gray")
+        color = current_colors.get(n, "#808080")
         node_objs.append({
             "id": n,
             "label": n,
@@ -111,9 +181,12 @@ def get_edges():
 def add_node():
     data = request.get_json()
     name = data.get("name")
+    color = data.get("color")
     if not name:
         return jsonify({"error": "Node name required"}), 400
     net.add_node(name)
+    if color:
+        current_colors[name] = color
     return jsonify({"success": True})
 
 @app.route("/remove_node", methods=["POST"])
