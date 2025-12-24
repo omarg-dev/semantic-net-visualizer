@@ -1,24 +1,25 @@
 const App = {
     selectedNode: null,
-    currentPalette: ["#26465aff", "#a24f4fff", "#eb7044", "#204699ff", "#2c814bff"],
+    // border is the same as active color but a darker shade
+    currentPalette: ["#666666", "#26465aff", "#a24f4fff", "#eb7044", "#204699ff", "#2c814bff"],
 
-    // --- INIT ---
+
+    // initialize the application
     async init() {
         Graph.init('network');
         
         // Load Data
         await this.loadGraphData();
-        await this.loadPresets();
+        await this.loadProjects();
         
         // Setup Events
         this.setupGraphEvents();
         this.setupUIEvents();
         
-        // Initial Check
         this.checkInference();
     },
 
-    // --- DATA ---
+    // load graph data from server
     async loadGraphData() {
         try {
             const data = await API.get('/get_graph');
@@ -32,14 +33,14 @@ const App = {
             Graph.edges.add(data.edges.map(e => ({
                 from: e.source, to: e.target, label: e.relation,
                 dashes: e.dashes, 
-                color: e.dashes ? { color: '#2563eb' } : undefined
+                color: e.dashes ? { color: '#eb7044' } : undefined
             })));
         } catch (err) {
             console.error("Failed to load graph:", err);
         }
     },
 
-    // --- EVENTS ---
+    // graph event handlers
     setupGraphEvents() {
         const network = Graph.network;
 
@@ -84,9 +85,9 @@ const App = {
              Interactions.startAddNodeMode(Graph.network, (name, x, y) => this.addNode(name, x, y));
         };
         
-        document.getElementById('btn-presets').onclick = () => document.getElementById('modal-presets').classList.remove('hidden');
+        document.getElementById('btn-projects').onclick = () => document.getElementById('modal-projects').classList.remove('hidden');
         document.getElementById('btn-export').onclick = () => this.exportJSON();
-        document.getElementById('file-upload').onchange = (e) => this.handleImportFile(e);
+        document.getElementById('file-upload').onchange = (e) => this.importFile(e);
         document.getElementById('btn-infer').onclick = () => this.runInference();
 
         // Context Actions
@@ -121,7 +122,7 @@ const App = {
         };
     },
 
-    // --- API LOGIC ---
+    // graph manipulation methods
     async addNode(name, x, y) {
         if (!name) return;
         try {
@@ -129,6 +130,7 @@ const App = {
             await API.post('/add_node', { name, color: defaultColor, x, y });
             if (!Graph.nodes.get(name)) {
                 Graph.nodes.add({ id: name, label: name, color: defaultColor, x, y });
+                this.checkInference();
             }
         } catch (err) { alert(err.message); }
     },
@@ -142,7 +144,7 @@ const App = {
         try {
             const res = await API.post('/add_relation', { source: from, target: to, relation: label });
             Graph.edges.add({ from, to, label });
-            this.updateInferenceBadge(res.inference_count);
+            this.checkInference();
         } catch (err) { console.error(err); }
     },
 
@@ -151,7 +153,6 @@ const App = {
         await API.post('/remove_node', { name: this.selectedNode });
         Graph.nodes.remove(this.selectedNode);
         this.hideMenus();
-        this.checkInference();
     },
 
     async removeSelectedEdge() {
@@ -163,10 +164,9 @@ const App = {
         await API.post('/remove_relation', { source: edge.from, target: edge.to, relation: edge.label });
         Graph.edges.remove(edgeId);
         this.hideMenus();
-        this.checkInference();
     },
 
-    // --- MENUS ---
+    // helper to show/hide menus
     showEdgeMenu(edgeId, domPos) {
         const menu = document.getElementById('edge-menu');
         menu.style.left = domPos.x + 'px';
@@ -180,36 +180,43 @@ const App = {
         document.getElementById('edge-menu').classList.add('hidden');
     },
 
-    // --- PRESETS & IMPORT (Fixed Logic) ---
-    async loadPresets() {
-        const grid = document.getElementById('preset-grid');
-        while (grid.children.length > 1) grid.removeChild(grid.lastChild); // Clear old
+    
+    async loadProjects() {
+        const grid = document.getElementById('project-grid');
+        while (grid.children.length > 1) grid.removeChild(grid.firstChild); // Clear old
 
         try {
-            const list = await API.get('/get_presets');
-            list.forEach(preset => {
+            const list = await API.get('/get_projects');
+            list.forEach(project => {
                 const card = document.createElement('div');
-                card.className = 'preset-card';
-                let content = `<div class="preset-info">${preset.name}</div>`;
-                if(preset.has_preview) {
-                    content = `<img src="presets/${preset.filename.replace('.json', '.png')}" class="preset-thumb">` + content;
+                card.className = 'project-card';
+                let content = `<div class="project-info">${project.name.replace('.snet', '')}</div>`;
+                // convert b64 to img if exists
+                if(project.preview_b64) {
+                    content = `<img src="${project.preview_b64}" class="project-preview">` + content;
                 }
                 card.innerHTML = content;
                 card.onclick = () => {
-                    this.loadPresetFile(preset.filename);
-                    document.getElementById('modal-presets').classList.add('hidden');
+                    this.loadProjectFile(project.filename);
+                    document.getElementById('modal-projects').classList.add('hidden');
                 };
                 grid.appendChild(card);
             });
-        } catch (e) { console.error("No presets found"); }
+
+            const importCard = document.getElementById('new-project');
+            grid.removeChild(importCard);
+            grid.appendChild(importCard);
+        } catch (e) { console.error("No projects found"); }
     },
 
-    async loadPresetFile(filename) {
-        await API.post('/import_json', { filename });
+    async loadProjectFile(filename) {
+        await API.post('/load', { filename });
         await this.loadGraphData();
+
+        this.checkInference();
     },
 
-    async handleImportFile(event) {
+    async importFile(event) {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -220,22 +227,22 @@ const App = {
                 
                 // Construct payload matching the server's expected Schema
                 const payload = {
-                    name: "imported_project",
-                    nodes: jsonContent.graph ? jsonContent.graph.nodes : [],
-                    edges: jsonContent.graph ? jsonContent.graph.edges : [],
-                    palette: jsonContent.settings ? jsonContent.settings.palette : [],
-                    img_data: jsonContent.meta ? jsonContent.meta.thumbnail : ""
+                    name: file.name.replace('.snet', ''),
+                    version: jsonContent.version || "UNKNOWN",
+                    created_at: jsonContent.created_at || "",
+                    preview_b64: jsonContent.preview_b64 || "",
+                    palette: jsonContent.palette || [],
+                    nodes: jsonContent.nodes || [],
+                    edges: jsonContent.edges || [],
                 };
 
-                // Upload as a temporary preset, then load it
-                await API.post('/export_json', payload);
-                await this.loadPresetFile('imported_project.json');
+                await API.post('/save', payload);
                 
-                document.getElementById('modal-presets').classList.add('hidden');
                 alert("Import successful!");
+                await this.loadProjects();
             } catch (err) {
                 console.error(err);
-                alert("Failed to import. Invalid JSON structure.");
+                alert("Failed to import. Invalid file structure.");
             }
         };
         reader.readAsText(file);
@@ -245,53 +252,46 @@ const App = {
         const nodes = Graph.nodes.get();
         const edges = Graph.edges.get();
         const canvas = document.querySelector('#network canvas');
-        const imgData = canvas.toDataURL("image/png");
+        const preview_b64 = canvas.toDataURL("image/png");
 
         const payload = {
-            name: "Graph_" + Date.now(),
-            nodes: nodes.map(n => ({ id: n.id, color: n.color, x: n.x, y: n.y })),
-            edges: edges.map(e => ({ source: e.from, target: e.to, relation: e.label, dashes: e.dashes })),
+            name: "",
+            version: await API.get('/get_version'),
+            created_at: new Date().toISOString(),
             palette: this.currentPalette,
-            img_data: imgData
+            preview_b64: preview_b64,
+            nodes: nodes.map(n => ({ id: n.id, color: n.color })),
+            edges: edges.map(e => ({ source: e.from, target: e.to, relation: e.label, dashes: e.dashes })),
         };
 
-        // Save to server (Presets)
-        const res = await API.post('/export_json', payload);
+        const res = await API.post('/export', payload);
+        // trigger client-side download
         if(res.success) {
-            // Also trigger client-side download
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
             const downloadAnchorNode = document.createElement('a');
             downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", payload.name + ".json");
+            downloadAnchorNode.setAttribute("download", (payload.name || "project") + ".snet");
             document.body.appendChild(downloadAnchorNode); // required for firefox
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
-
-            alert("Saved to Presets Library & Downloaded!");
-            this.loadPresets();
+            this.updateInferenceBadge(0);
         }
-    },
-
-    // --- INFERENCE ---
-    async checkInference() { 
-        // Initial check logic if needed
     },
 
     async runInference() {
         const res = await API.post('/inference');
-        if(res.new_edges && res.new_edges.length > 0) {
-            res.new_edges.forEach(e => {
-                if(!Graph.edges.get().find(ex => ex.from === e.source && ex.to === e.target)) {
-                    Graph.edges.add({
-                        from: e.source, to: e.target, label: e.relation, 
-                        dashes: true, color: { color: '#2563eb' }
-                    });
-                }
-            });
-            alert(`Inferred ${res.new_edges.length} new connections!`);
-        } else {
-            alert("No new inferences found.");
-        }
+        if(!res.new_edges || res.new_edges.length == 0) return;
+
+        res.new_edges.forEach(e => {
+            if(!Graph.edges.get().find(ex => ex.from === e.source && ex.to === e.target)) {
+                Graph.edges.add({
+                    from: e.source, to: e.target, label: e.relation, 
+                    dashes: true, color: { color: '#' }
+                });
+            }
+        });
+        this.checkInference();
+        alert(`Inferred ${res.new_edges.length} new connections!`);
     },
     
     updateInferenceBadge(count) {
@@ -303,6 +303,12 @@ const App = {
         } else {
             btn.classList.add('hidden');
         }
+    },
+
+    async checkInference() {
+        const res = await API.get('/check_inference');
+        const count = res.count || 0;
+        this.updateInferenceBadge(count);
     }
 };
 

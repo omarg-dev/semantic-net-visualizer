@@ -1,10 +1,5 @@
-/*
- * interactions.js
- * Helper utilities for UI overlays (Floating Inputs, Link Mode).
- */
 const Interactions = {
-    
-    // --- TIP BAR ---
+    // tip bar
     showTip(text) {
         const tip = document.getElementById('tip-bar');
         if (tip) {
@@ -22,32 +17,77 @@ const Interactions = {
 
     // Spawns a temporary input box at x,y
     showFloatingInput(x, y, defaultValue, callback) {
-        const input = document.createElement('input');
-        input.className = 'floating-input';
+        const wrapper = document.getElementById('floating-wrapper');
+        const input = document.getElementById('floating-input');
+        
+        if (!wrapper || !input) {
+            console.error('floating input elements not found');
+            return;
+        }
+        
         input.value = defaultValue || "";
         input.placeholder = "Node name";
-        input.style.left = x + 'px';
-        input.style.top = y + 'px';
         
-        document.body.appendChild(input);
+        wrapper.style.left = x + 'px';
+        wrapper.style.top = y + 'px';
+        wrapper.classList.remove('hidden');
+
         input.focus();
         input.select();
 
         let finished = false;
+        
+        const cleanup = () => {
+            wrapper.classList.add('hidden');
+            input.removeEventListener('keydown', handleKeydown);
+            input.removeEventListener('blur', handleBlur);
+            wrapper.removeEventListener('mousedown', stopProp);
+            wrapper.removeEventListener('dblclick', stopProp);
+        };
+
         const finish = (val) => {
             if (finished) return;
             finished = true;
-            input.remove();
+            cleanup();
             callback(val);
         };
 
-        // Commit on Enter, Cancel on Escape/Blur
-        input.addEventListener('keydown', (e) => {
+        const handleKeydown = (e) => {
+            e.stopPropagation();
             if (e.key === 'Enter') finish(input.value.trim());
             if (e.key === 'Escape') finish(null);
-        });
+        };
+
+        const handleBlur = () => {
+            // Small delay to allow button clicks to register if they didn't prevent default
+            setTimeout(() => {
+                if (!finished) finish(null);
+            }, 100);
+        };
         
-        input.addEventListener('blur', () => finish(null));
+        const stopProp = (e) => e.stopPropagation();
+        wrapper.addEventListener('mousedown', stopProp);
+        wrapper.addEventListener('dblclick', stopProp);
+
+        input.addEventListener('keydown', handleKeydown);
+
+        // Accept/Cancel buttons
+        const acceptBtn = document.getElementById('input-accept');
+        const cancelBtn = document.getElementById('input-cancel');
+        
+        // Prevent focus loss on mousedown, handle action on click
+        const preventBlur = (e) => e.preventDefault();
+        
+        if (acceptBtn) {
+            acceptBtn.onmousedown = preventBlur;
+            acceptBtn.onclick = () => finish(input.value.trim());
+        }
+        if (cancelBtn) {
+            cancelBtn.onmousedown = preventBlur;
+            cancelBtn.onclick = () => finish(null);
+        }
+        
+        input.addEventListener('blur', handleBlur);
     },
 
     // --- CUSTOM MODES ---
@@ -98,7 +138,7 @@ const Interactions = {
                 return;
             }
 
-            // PREVIEW: Show edge immediately
+            // Show edge immediately
             if (callbacks.onPreview) callbacks.onPreview(sourceNodeId, targetNodeId);
 
             // Calculate midpoint for input

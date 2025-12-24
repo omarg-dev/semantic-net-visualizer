@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request, render_template, send_from_directory
 from flask_cors import CORS
 from semantic_net import SemanticNet
+from project_manager import ProjectManager
 import json
 import base64
 import os
@@ -9,146 +10,74 @@ VERSION = "0.2"
 app = Flask(__name__, template_folder="templates", static_folder="static")
 CORS(app)
 
+PROJECTS_DIR = "./projects"
+pm = ProjectManager(PROJECTS_DIR)
 net = SemanticNet()
-PRESETS_DIR = "./presets"
-
-# Serve presets (images and json)
-@app.route('/presets/<path:filename>')
-def serve_presets(filename):
-    return send_from_directory(PRESETS_DIR, filename)
-
-# load json file
-def load_json(filepath):
-    try:
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-    
-        global net
-        net = SemanticNet()
-    
-        # Load Nodes (with colors/metadata)
-        # Support both legacy flat format and new nested format
-        if "graph" in data:
-            net_data = data["graph"]
-            nodes = net_data.get("nodes", [])
-            edges = net_data.get("edges", [])
-        else:
-            # Fallback for legacy files
-            nodes = data.get("nodes", [])
-            edges = data.get("edges", [])
-
-        for n in nodes:
-            # Extract attributes, defaulting if missing
-            node_id = n.get("id")
-            if not node_id: continue
-            
-            color = n.get("color", "#808080")
-            x = n.get("x")
-            y = n.get("y")
-            
-            net.add_node(node_id, color=color)
-
-        # Load Edges
-        for e in edges:
-            net.add_relation(
-                e.get("source"),
-                e.get("relation"),
-                e.get("target"),
-                type=e.get("type", "manual"),
-                inferred=e.get("dashes", False)
-            )
-        
-        return True
-
-    except Exception as e:
-        print(f"Error loading file: {e}")
-        return False
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
+@app.route("/get_version")
+def get_version():
+    return VERSION
+
+# Serve projects (images and json)
+@app.route('/projects/<path:filename>')
+def serve_projects(filename):
+    return send_from_directory(PROJECTS_DIR, filename)
+
 # Project Management (Presets)
-@app.route("/get_presets")
-def get_presets():
-    files = []
-    for f in os.listdir(PRESETS_DIR):
-        if not f.endswith(".json"):
-            continue
-        
-        try:
-            with open(os.path.join(PRESETS_DIR, f), "r") as file:
-                data = json.load(file)
-        
-            # Check if sidecar image exists
-            img_name = f.replace(".json", ".png")
-            has_img = os.path.exists(os.path.join(PRESETS_DIR, img_name))
+@app.route("/get_projects")
+def get_projects():
+    return jsonify(pm.get_projects())
 
-            files.append({
-                "filename": f,
-                "has_preview": has_img
-            })
-        except:
-            continue
+@app.route("/load", methods=["POST"])
+def load_project():
+    filename = request.json.get("filename")
+    global net
+    loaded_net = pm.load_project(filename)
+    
+    if loaded_net:
+        net = loaded_net
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False, "error": "Failed to load project"}), 400
 
-    return jsonify(files)
-
-@app.route("/export_json", methods=["POST"])
-def export_json():
+@app.route("/save", methods=["POST"])
+def save_project():
     data = request.json
 
-    # Extract pieces from the frontend request
-    name = data.get("name", "Untitled")
-    thumbnail_b64 = data.get("img_data", "") # The Base64 string from canvas
-    palette = data.get("palette", [])        # Frontend must send the current palette colors
-    nodes = data.get("nodes", [])            # Frontend sends current node state
-    edges = data.get("edges", [])            # Frontend sends current edge state
-
-    # Construct the exact JSON structure you defined
-    export_data = {
-        "meta": {
-            "name": name,
-            "version": VERSION,
-            "thumbnail": thumbnail_b64  # Baked directly into the JSON
-        },
-        "settings": {
-            "palette": palette
-        },
-        "graph": {
-            "nodes": nodes,
-            "edges": edges
-        }
+    # Construct the exact JSON structure we want to save
+    save_data = {
+        "name": data.get("name", ""),
+        "version": VERSION,
+        "created_at": data.get("created_at", ""),
+        "preview_b64": data.get("preview_b64", ""),
+        "palette": data.get("palette", []),
+        "nodes": data.get("nodes", []),
+        "edges": data.get("edges", [])
     }
 
-    # Save JSON
-    file_path = os.path.join(PRESETS_DIR, f"{name}.json")
-    with open(file_path, "w") as f:
-        json.dump(export_data, f, indent=2)
-    
-    # Save Sidecar Image
-    if thumbnail_b64:
-        try:
-            # Handle data URI scheme
-            if "," in thumbnail_b64:
-                _, encoded = thumbnail_b64.split(",", 1)
-            else:
-                encoded = thumbnail_b64
-            
-            img_data = base64.b64decode(encoded)
-            with open(os.path.join(PRESETS_DIR, f"{name}.png"), "wb") as f:
-                f.write(img_data)
-        except Exception as e:
-            print(f"Failed to save thumbnail: {e}")
+    pm.save_to_projects(save_data)
     
     return jsonify({"success": True})
 
-@app.route("/import_json", methods=["POST"])
-def import_json():
-    filename = request.json.get("filename")
-    path = os.path.join(PRESETS_DIR, filename)
-    if load_json(path):
-        return jsonify({"success": True})
-    return jsonify({"error": f"{filename} not found"}), 404
+@app.route("/export", methods=["POST"])
+def export_project():
+    data = request.json
+
+    # Construct the exact JSON structure we want to save
+    export_data = {
+        "name": data.get("name", ""), # This field will be inherented by the actual filename when imported
+        "version": VERSION,
+        "preview_b64": data.get("preview_b64", ""),
+        "palette": data.get("palette", []),
+        "nodes": data.get("nodes", []),
+        "edges": data.get("edges", [])
+    }
+    
+    return jsonify({"success": True})
 
 # Graph Operations
 @app.route("/get_graph")
@@ -194,9 +123,6 @@ def inference():
 def check_inference():
     count = net.check_inference_potential()
     return jsonify({"count": count})
-
-# Initialize with default
-load_json(os.path.join(PRESETS_DIR, "default.json"))
 
 if __name__ == "__main__":
     app.run()

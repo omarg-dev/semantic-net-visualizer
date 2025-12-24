@@ -1,7 +1,3 @@
-/*
- * orbit.js
- * Manages the visual logic for the Orbit Context Menu.
- */
 const Orbit = {
     menu: null,
     satellitesContainer: null,
@@ -28,23 +24,23 @@ const Orbit = {
         // Render Satellites
         this.satellitesContainer.innerHTML = ''; // Clear old
 
-        // Arc Geometry: Span from -20deg (left) to 200deg (right)
-        const totalSpan = 240; 
-        const startAngle = -10; 
-
+        // Calculate angles
+        // Arc Geometry: Span from startSpan(right) to endSpan(left)
+        const startSpan = 240; 
+        const endSpan = -10;
         palette.forEach((color, index) => {
             const btn = document.createElement('div');
             btn.className = 'satellite';
             btn.style.backgroundColor = color;
             
             // Calculate Angle
-            const step = totalSpan / (palette.length - 1);
-            const angle = startAngle - (index * step);
+            const step = (endSpan - startSpan) / (palette.length - 1);
+            const angle = endSpan + (index * step);
             
             btn.style.setProperty('--angle', `${angle}deg`);
             
             btn.onclick = (e) => {
-                e.stopPropagation(); // Prevent Vis.js background click
+                e.stopPropagation();
                 onColorSelect(nodeId, color);
             };
             

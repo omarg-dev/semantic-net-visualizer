@@ -19,8 +19,8 @@
             <button id="btn-add-node" class="btn-secondary"
              title="Add Node (Double Click)">+ Node</button>
             <div class="divider"></div>
-            <button id="btn-presets" class="btn-primary">
-                <i class="fas fa-folder-open"></i> Presets
+            <button id="btn-projects" class="btn-primary">
+                <i class="fas fa-folder-open"></i> Projects
             </button>
             <button id="btn-export" class="btn-primary">
                 <i class="fas fa-file-export"></i> Export JSON
@@ -30,10 +30,34 @@
 
     <main id="network-container">
         <div id="tip-bar" class="tip-bar hidden"></div>
+
         <div id="network"></div>
         
         <div id="empty-state" class="empty-hint">
             <i class="fas fa-mouse-pointer"></i> Double-click empty space to add a node
+        </div>
+
+        <div id="floating-wrapper" class="floating-input hidden">
+            <input id="floating-input" type="text" autocomplete="off">
+            <div class="action-buttons">
+                <button id="input-accept" class="positive menu-button"><i class="fas fa-check"></i></button>
+                <button id="input-cancel" class="negative menu-button"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+
+        <div id="orbit" class="orbit-container hidden">
+            <div class="menu">
+                <button id="ctx-add-rel" title="Link" class="positive menu-button"><i class="fas fa-link"></i></button>
+                <button id="ctx-remove-node" title="Delete" class="negative menu-button"><i class="fas fa-trash"></i></button>
+            </div>
+            
+            <div id="orbit-satellites"></div>
+        </div>
+
+        <div id="edge-menu" class="menu hidden">
+            <button class="negative menu-button" id="ctx-remove-rel">
+                <i class="fas fa-trash"></i>
+            </button>
         </div>
 
         <button id="btn-infer" class="btn-infer hidden" title="Run Inference">
@@ -41,14 +65,6 @@
             <span id="infer-badge" class="infer-badge">0</span>
         </button>
 
-        <div id="orbit" class="orbit-container hidden">
-            <div class="orbit-menu">
-                <button id="ctx-add-rel" title="Link" class="edge"><i class="fas fa-link"></i></button>
-                <button id="ctx-remove-node" title="Delete" class="danger"><i class="fas fa-trash"></i></button>
-            </div>
-            
-            <div id="orbit-satellites"></div>
-        </div>
     </main>
     
     <footer class="app-footer">
@@ -63,23 +79,17 @@
         </div>
     </footer>
 
-    <div id="edge-menu" class="context-menu hidden">
-        <button class="menu-item" id="ctx-remove-rel">
-            <i class="fas fa-trash"></i>
-        </button>
-    </div>
-
-    <div id="modal-presets" class="modal-overlay">
-        <button class="btn-close" onclick="closeModal('modal-presets')">×</button>
+    <div id="modal-projects" class="modal-overlay">
+        <button class="btn-close" onclick="closeModal('modal-projects')">×</button>
         <div class="modal-card">
             <div class="modal-body">
-                <div class="preset-grid" id="preset-grid">
-                    <div class="preset-card new-preset" onclick="document.getElementById('file-upload').click()">
+                <div class="project-grid" id="project-grid">
+                    <div id="new-project" class="project-card new-project" onclick="document.getElementById('file-upload').click()">
                         <div class="icon-plus">+</div>
                     </div>
                 </div>
                 
-                <input type="file" id="file-upload" accept=".json" style="display: none;">
+                <input type="file" id="file-upload" accept=".snet" style="display: none;">
             </div>
         </div>
     </div>

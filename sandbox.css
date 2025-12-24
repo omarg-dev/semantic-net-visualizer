@@ -1,0 +1,67 @@
+/* --- ORBIT MENU (The Context Menu) --- */
+.orbit-container {
+    position: absolute; 
+    width: 0; height: 0; 
+    z-index: 1000; 
+    pointer-events: none; /* Ensures the empty container doesn't block clicks */
+}
+
+.hidden { display: none !important; opacity: 0; }
+
+/* 1. Actions (The Capsule Below Node) */
+.orbit-center {
+    position: absolute;
+    top: 35px; /* Pushes it 35px below the node center */
+    left: 50%; 
+    transform: translateX(-50%);
+    
+    display: flex; 
+    gap: 8px; 
+    pointer-events: auto; /* Re-enable clicks for buttons */
+    background: white; 
+    padding: 6px; 
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    border: 1px solid #e2e8f0;
+}
+
+.orbit-btn {
+    width: 32px; height: 32px; 
+    border-radius: 50%; 
+    border: none; 
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: #f1f5f9; 
+    color: var(--primary); 
+    transition: 0.2s;
+}
+
+.orbit-btn:hover { background: #e2e8f0; transform: scale(1.1); }
+.orbit-btn.danger:hover { background: #fee2e2; color: var(--danger); }
+
+/* 2. Satellites (The Color Arc) */
+.satellite {
+    position: absolute; 
+    width: 24px; height: 24px; 
+    border-radius: 50%;
+    border: 2px solid white; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    cursor: pointer; 
+    pointer-events: auto; 
+    
+    top: 0; left: 0; /* Starts at node center */
+    
+    /* THE MATH: 
+       1. Rotate the axis by --angle 
+       2. Push the circle out by 60px 
+       3. Rotate the circle back so lighting/shadows stay upright */
+    transform: rotate(var(--angle)) translate(60px) rotate(calc(-1 * var(--angle)));
+    
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy pop */
+}
+
+.satellite:hover { 
+    /* On hover, push it out slightly further (68px) and scale up */
+    transform: rotate(var(--angle)) translate(68px) rotate(calc(-1 * var(--angle))) scale(1.2); 
+    z-index: 10;
+}
