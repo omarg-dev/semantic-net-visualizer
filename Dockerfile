@@ -10,8 +10,8 @@ RUN pip install --no-cache-dir --upgrade pip==23.3.1 && pip install --no-cache-d
 # Copy the rest of your code (app.py, static/, templates/)
 COPY . .
 
-# Open the port Flask runs on (5000)
-EXPOSE 5000
+# Open the port Flask runs on (4300)
+EXPOSE 4300
 
 # Configure Flask app module for the `flask run` command
 ENV FLASK_APP=app.py
