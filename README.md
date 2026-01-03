@@ -1,1 +1,2 @@
-[Semantic Net Visualizer](https://semantic-net-visualizer.onrender.com)
+WORK IN PROGRESS
+[Semantic Net Visualizer](https://semantic.omarg.dev)
